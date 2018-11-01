@@ -1,5 +1,6 @@
 import React from "react";
 import firebase from "../config/firebase";
+import md5 from "md5";
 import { Grid, Form, Segment, Button, Header, Message, Icon } from "semantic-ui-react";
 import { Link } from "react-router-dom";
 
@@ -11,7 +12,8 @@ class Register extends React.Component {
     password: ``,
     passwordConfirmation: ``,
     errors: [],
-    loading: false
+    loading: false,
+    usersRef: firebase.database().ref(`users`)
   };
 
   isFormEmpty = ({ username, email, password, passwordConfirmation }) => {
@@ -61,7 +63,19 @@ class Register extends React.Component {
       .createUserWithEmailAndPassword(this.state.email, this.state.password)
       .then(newUser => {
         console.log(newUser)
-        this.setState({ loading: false })
+        newUser.user.updateProfile({
+          displayName: this.state.username,
+          photoURL: `http://gravatar.com/avatar/${md5(newUser.user.email)}?d=identicon`
+        })
+        .then(() => {
+          this.saveUser(newUser).then(() => {
+            console.log(`user saved`);
+          })
+        })
+        .catch(err => {
+          console.log(err);
+          this.setState({ errors: this.state.errors.concat(err), loading: false });
+        })
       })
       .catch(err => {
         console.log(err)
@@ -69,6 +83,11 @@ class Register extends React.Component {
       });
     }
   }
+
+  saveUser = newUser => this.state.usersRef.child(newUser.user.uid).set({
+    name: newUser.user.displayName,
+    avatar: newUser.user.photoURL
+  })
 
   render() {
 
